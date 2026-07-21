@@ -1,43 +1,96 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import "./App.css";
+
+import Header from "./components/Header";
+import TodoForm from "./components/TodoForm";
+import TodoItem from "./components/TodoItem";
 
 function App() {
-  const [todo, setTodo] = useState("");
-  const [todos, setTodos] = useState([]);
+  const [todos, setTodos] = useState(() => {
+    const savedTodos = localStorage.getItem("todos");
+    return savedTodos ? JSON.parse(savedTodos) : [];
+  });
 
-  const addTodo = () => {
-    if (!todo.trim()) return;
-    setTodos((prev) => [...prev, todo]);
-    setTodo("");
-  };
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    localStorage.setItem("todos", JSON.stringify(todos));
+  }, [todos]);
+
+  function addTodo(text) {
+    const newTodo = {
+      id: Date.now(),
+      text,
+      completed: false,
+    };
+
+    setTodos((prev) => [...prev, newTodo]);
+  }
+
+  function deleteTodo(id) {
+    setTodos((prev) => prev.filter((todo) => todo.id !== id));
+  }
+
+  function toggleTodo(id) {
+    setTodos((prev) =>
+      prev.map((todo) =>
+        todo.id === id
+          ? { ...todo, completed: !todo.completed }
+          : todo
+      )
+    );
+  }
+
+  function editTodo(id, newText) {
+    setTodos((prev) =>
+      prev.map((todo) =>
+        todo.id === id
+          ? { ...todo, text: newText }
+          : todo
+      )
+    );
+  }
+
+  const filteredTodos = todos.filter((todo) =>
+    todo.text.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const completed = todos.filter((todo) => todo.completed).length;
+  const pending = todos.length - completed;
 
   return (
-    <div>
+    <div className="app">
+      <Header
+        total={todos.length}
+        completed={completed}
+        pending={pending}
+      />
+
+      <TodoForm addTodo={addTodo} />
+
       <input
-  type="text"
-  placeholder="Enter Todo"
-  value={todo}
-  onChange={(e) => setTodo(e.target.value)}
-  onKeyDown={(e) => {
-    if (e.key === "Enter") {
-      addTodo();
-    }
-  }}
-/>
-      {todos.map((item, index) => (
-        <div key={index}>
-          <span>{item}</span>
+        className="search-box"
+        type="text"
+        placeholder="🔍 Search Todo..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
 
-          <button
-            onClick={() =>
-              setTodos(todos.filter((_, i) => i !== index))
-            }
-          >
-            Delete
-          </button>
-
-          <hr />
+      {filteredTodos.length === 0 ? (
+        <h2 className="empty">No Todo Found</h2>
+      ) : (
+        <div className="todo-list">
+          {filteredTodos.map((todo) => (
+            <TodoItem
+              key={todo.id}
+              todo={todo}
+              toggleTodo={() => toggleTodo(todo.id)}
+              deleteTodo={() => deleteTodo(todo.id)}
+              editTodo={editTodo}
+            />
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
